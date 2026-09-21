@@ -12,7 +12,8 @@ struct AppPackageSpec {
     priority: u8,
 }
 
-const CODEX_PACKAGE_EXECUTABLES: &[&str] = &["ChatGPT.exe", "Codex.exe", "codex.exe"];
+const CODEX_PACKAGE_EXECUTABLES: &[&str] = &["Codex.exe", "ChatGPT.exe", "codex.exe"];
+const CHATGPT_PACKAGE_EXECUTABLES: &[&str] = &["ChatGPT.exe", "Codex.exe", "codex.exe"];
 #[cfg(not(target_os = "linux"))]
 const STANDALONE_CODEX_EXECUTABLES: &[&str] = &["ChatGPT.exe", "Codex.exe", "codex.exe"];
 
@@ -48,20 +49,20 @@ const APP_PACKAGE_SPECS: &[AppPackageSpec] = &[
         identity: "OpenAI.Codex",
         app_id: "App",
         executable_names: CODEX_PACKAGE_EXECUTABLES,
-        priority: 1,
+        priority: 2,
     },
     AppPackageSpec {
         identity: "OpenAI.CodexBeta",
         app_id: "App",
         executable_names: CODEX_PACKAGE_EXECUTABLES,
-        priority: 1,
+        priority: 2,
     },
     AppPackageSpec {
         identity: "OpenAI.ChatGPT-Desktop",
         app_id: "App",
-        executable_names: CODEX_PACKAGE_EXECUTABLES,
-        // Codex 已迁移为新的 ChatGPT Desktop；同机并存时优先新宿主。
-        priority: 2,
+        executable_names: CHATGPT_PACKAGE_EXECUTABLES,
+        // 仅在没有独立 Codex 包时兼容旧 ChatGPT Desktop 宿主。
+        priority: 1,
     },
 ];
 
@@ -595,6 +596,13 @@ pub fn packaged_app_user_model_id(app_dir: &Path) -> Option<String> {
         return None;
     }
     Some(format!("{}_{publisher_id}!{}", spec.identity, spec.app_id))
+}
+
+pub fn is_dedicated_codex_package(app_dir: &Path) -> bool {
+    package_spec_from_path(app_dir).is_some_and(|spec| {
+        spec.identity.eq_ignore_ascii_case("OpenAI.Codex")
+            || spec.identity.eq_ignore_ascii_case("OpenAI.CodexBeta")
+    })
 }
 
 fn package_name_from_app_dir(app_dir: &Path) -> Option<String> {

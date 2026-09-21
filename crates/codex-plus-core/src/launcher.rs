@@ -865,7 +865,7 @@ impl LaunchHooks for DefaultLaunchHooks {
         let native_menu_inspector_port =
             native_menu_localization_enabled.then(|| select_native_menu_inspector_port(debug_port));
         let launch_extra_args = codex_extra_args_for_launch(settings, extra_args);
-        if cfg!(windows) {
+        if should_use_packaged_activation(app_dir) {
             let activation = if let Some(inspector_port) = native_menu_inspector_port {
                 build_packaged_activation_with_native_menu_inspector(
                     app_dir,
@@ -2553,6 +2553,10 @@ pub fn build_codex_command_with_native_menu_inspector(
         extra_args,
     ));
     command
+}
+
+pub fn should_use_packaged_activation(app_dir: &Path) -> bool {
+    cfg!(windows) && !crate::app_paths::is_dedicated_codex_package(app_dir)
 }
 
 pub fn build_packaged_activation(

@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use codex_plus_core::app_paths::{
     build_codex_executable, codex_app_version, find_bundled_codex_cli, find_latest_codex_app_dir,
     find_latest_codex_app_dir_from_roots, find_linux_codex_app, find_macos_codex_app,
-    normalize_codex_app_path, packaged_app_user_model_id, resolve_codex_app_dir_with_saved,
-    user_data_candidates_from,
+    is_dedicated_codex_package, normalize_codex_app_path, packaged_app_user_model_id,
+    resolve_codex_app_dir_with_saved, user_data_candidates_from,
 };
 use codex_plus_core::launcher::{
     CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
@@ -15,7 +15,7 @@ use codex_plus_core::launcher::{
     build_macos_cleanup_command, build_macos_open_command,
     build_macos_open_command_with_native_menu_inspector, build_packaged_activation,
     build_packaged_activation_with_native_menu_inspector, launch_and_inject_with_hooks,
-    select_macos_debug_launch_action,
+    select_macos_debug_launch_action, should_use_packaged_activation,
 };
 #[cfg(windows)]
 use codex_plus_core::launcher::{WindowsProcessControlStrategy, windows_process_control_strategy};
@@ -50,7 +50,7 @@ fn app_paths_find_latest_windows_package_prefers_highest_version_app_dir() {
 }
 
 #[test]
-fn app_paths_find_latest_windows_package_accepts_chatgpt_desktop_migration() {
+fn app_paths_find_latest_windows_package_prefers_dedicated_codex_over_chatgpt_desktop() {
     let temp = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(temp.path().join("OpenAI.Codex_26.707.3748.0_x64__abc/app")).unwrap();
     std::fs::create_dir_all(
@@ -68,18 +68,14 @@ fn app_paths_find_latest_windows_package_accepts_chatgpt_desktop_migration() {
 
     assert_eq!(
         latest,
-        temp.path()
-            .join("OpenAI.ChatGPT-Desktop_2026.514.421.0_neutral_~_abc")
-            .join("app")
+        temp.path().join("OpenAI.Codex_26.707.3748.0_x64__abc/app")
     );
-    assert_eq!(
-        codex_app_version(&latest).as_deref(),
-        Some("2026.514.421.0")
-    );
+    assert_eq!(codex_app_version(&latest).as_deref(), Some("26.707.3748.0"));
     assert_eq!(
         packaged_app_user_model_id(&latest).as_deref(),
-        Some("OpenAI.ChatGPT-Desktop_abc!App")
+        Some("OpenAI.Codex_abc!App")
     );
+    assert!(is_dedicated_codex_package(&latest));
 }
 
 #[test]
@@ -143,7 +139,7 @@ fn app_paths_keep_explicit_store_path_override_without_re_resolving() {
 }
 
 #[test]
-fn app_paths_find_latest_windows_package_accepts_chatgpt_migration_across_roots() {
+fn app_paths_find_latest_windows_package_prefers_codex_across_roots() {
     let temp = tempfile::tempdir().unwrap();
     let root_a = temp.path().join("WindowsAppsA");
     let root_b = temp.path().join("WindowsAppsB");
@@ -153,7 +149,7 @@ fn app_paths_find_latest_windows_package_accepts_chatgpt_migration_across_roots(
 
     let latest = find_latest_codex_app_dir_from_roots(&[root_a, root_b]).unwrap();
 
-    assert!(latest.ends_with("OpenAI.ChatGPT-Desktop_1.2026.133.0_x64__abc/app"));
+    assert!(latest.ends_with("OpenAI.Codex_26.999.0.0_x64__abc/app"));
 }
 
 #[test]
@@ -405,6 +401,21 @@ fn app_paths_prefers_chatgpt_entrypoint_when_portable_bundle_contains_codex_shim
     std::fs::write(app.join("ChatGPT.exe"), "").unwrap();
 
     assert_eq!(build_codex_executable(&app), app.join("ChatGPT.exe"));
+}
+
+#[test]
+fn app_paths_dedicated_codex_package_prefers_codex_entrypoint_and_skips_appx_activation() {
+    let temp = tempfile::tempdir().unwrap();
+    let app = temp
+        .path()
+        .join("OpenAI.Codex_26.915.3509.0_x64__abc")
+        .join("app");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::write(app.join("Codex.exe"), "").unwrap();
+    std::fs::write(app.join("ChatGPT.exe"), "").unwrap();
+
+    assert_eq!(build_codex_executable(&app), app.join("Codex.exe"));
+    assert!(!should_use_packaged_activation(&app));
 }
 
 #[test]
