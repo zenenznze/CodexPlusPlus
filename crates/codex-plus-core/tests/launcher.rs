@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use codex_plus_core::app_paths::{
     build_codex_executable, codex_app_version, find_bundled_codex_cli, find_latest_codex_app_dir,
     find_latest_codex_app_dir_from_roots, find_linux_codex_app, find_macos_codex_app,
-    is_dedicated_codex_package, normalize_codex_app_path, packaged_app_user_model_id,
-    resolve_codex_app_dir_with_saved, user_data_candidates_from,
+    normalize_codex_app_path, packaged_app_user_model_id, resolve_codex_app_dir_with_saved,
+    user_data_candidates_from,
 };
 use codex_plus_core::launcher::{
     CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
@@ -15,7 +15,7 @@ use codex_plus_core::launcher::{
     build_macos_cleanup_command, build_macos_open_command,
     build_macos_open_command_with_native_menu_inspector, build_packaged_activation,
     build_packaged_activation_with_native_menu_inspector, launch_and_inject_with_hooks,
-    select_macos_debug_launch_action, should_use_packaged_activation,
+    select_macos_debug_launch_action,
 };
 #[cfg(windows)]
 use codex_plus_core::launcher::{WindowsProcessControlStrategy, windows_process_control_strategy};
@@ -75,7 +75,6 @@ fn app_paths_find_latest_windows_package_prefers_dedicated_codex_over_chatgpt_de
         packaged_app_user_model_id(&latest).as_deref(),
         Some("OpenAI.Codex_abc!App")
     );
-    assert!(is_dedicated_codex_package(&latest));
 }
 
 #[test]
@@ -404,7 +403,7 @@ fn app_paths_prefers_chatgpt_entrypoint_when_portable_bundle_contains_codex_shim
 }
 
 #[test]
-fn app_paths_dedicated_codex_package_prefers_codex_entrypoint_and_skips_appx_activation() {
+fn app_paths_dedicated_codex_package_prefers_codex_entrypoint() {
     let temp = tempfile::tempdir().unwrap();
     let app = temp
         .path()
@@ -415,7 +414,6 @@ fn app_paths_dedicated_codex_package_prefers_codex_entrypoint_and_skips_appx_act
     std::fs::write(app.join("ChatGPT.exe"), "").unwrap();
 
     assert_eq!(build_codex_executable(&app), app.join("Codex.exe"));
-    assert!(!should_use_packaged_activation(&app));
 }
 
 #[test]

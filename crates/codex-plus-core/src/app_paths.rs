@@ -598,13 +598,6 @@ pub fn packaged_app_user_model_id(app_dir: &Path) -> Option<String> {
     Some(format!("{}_{publisher_id}!{}", spec.identity, spec.app_id))
 }
 
-pub fn is_dedicated_codex_package(app_dir: &Path) -> bool {
-    package_spec_from_path(app_dir).is_some_and(|spec| {
-        spec.identity.eq_ignore_ascii_case("OpenAI.Codex")
-            || spec.identity.eq_ignore_ascii_case("OpenAI.CodexBeta")
-    })
-}
-
 fn package_name_from_app_dir(app_dir: &Path) -> Option<String> {
     let path = app_dir.to_string_lossy().replace('\\', "/");
     let mut parts = path.split('/').filter(|part| !part.is_empty());
